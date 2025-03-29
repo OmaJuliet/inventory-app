@@ -12,6 +12,8 @@ import { getStrapiURL } from "../utils/strapi";
 import SearchInput from "../components/SearchInput";
 import ItemForm from "../components/ItemForm";
 
+import "../styles/inventory.css";
+
 export const Route = createFileRoute("/inventories")({
   loader: async () => fetchInventories(),
   component: InventoriesComponent,
@@ -19,27 +21,31 @@ export const Route = createFileRoute("/inventories")({
 
 export type Inventory = {
   id: number;
-  // productID: string;
-  productID: number;
+  productID: string;
   productName: string;
   quantity: number;
   price: number;
   category: string;
   supplier: string;
-  productImage: { url: string; alternativeText: string };
+  productImage: {
+    url: string;
+    alternativeText: string;
+  };
 };
 
 function InventoriesComponent() {
   const inventories = Route.useLoaderData();
+  console.log("inventories", inventories);
 
   // State variable for the inventory list and update it when a new item is added
   const [inventoryList, setInventoryList] = useState(inventories);
 
   const handleItemAdded = (newItem: Inventory) => {
-    setInventoryList((prev) => [...prev, newItem]);
+    setInventoryList((prev) => [
+      ...prev,
+      { ...newItem, productDetails: "" }, // Add default productDetails
+    ]);
   };
-  ///////
-
 
   // State for global filter
   const [globalFilter, setGlobalFilter] = useState("");
@@ -88,27 +94,29 @@ function InventoriesComponent() {
       header: "Image",
       cell: ({ row }) => (
         <img
-          src={row.original.productImage?.url}
+          src={`http://localhost:1337${row.original.productImage?.url}`}
           alt={
             row.original.productImage?.alternativeText ||
             row.original.productName
           }
-          className="w-16 h-16 object-cover rounded"
+          className="inventory-image"
         />
       ),
     },
+    // delete functionality
+    // {
+    //   id: "delete",
+    //   header: "Delete",
+    //   cell: ({ row }) => (
+    //     <button
+    //       className="delete-btn"
+    //       onClick={() => handleDelete(row.original.id)}
+    //     >
+    //       🗑️
+    //     </button>
+    //   ),
+    // },
   ];
-
-  // Create Table Instance
-  // const table = useReactTable({
-  //   data: inventories,
-  //   columns,
-  //   state: {
-  //     globalFilter,
-  //   },
-  //   getCoreRowModel: getCoreRowModel(),
-  //   getFilteredRowModel: getFilteredRowModel(),
-  // });
 
   // Update the component to use inventoryList instead of inventories after adding inventory
   const table = useReactTable({
@@ -118,7 +126,6 @@ function InventoriesComponent() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
-  
 
   // State for filter values
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -156,20 +163,40 @@ function InventoriesComponent() {
     setNewItem((prev) => ({ ...prev, [name]: parsedValue }));
   };
 
+
+  // delete functionality
+  const handleDelete = async (documentId: string) => {
+    try {
+      const response = await fetch(`http://localhost:1337/api/inventories/${documentId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        setInventoryList((prev) => prev.filter((item) => item.id !== id));
+        alert("Item deleted successfully!");
+      } else {
+        throw new Error("Failed to delete item");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error deleting item");
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Inventory</h2>
+    <div className="inventory-container">
+      <h2 className="inventory-title">Inventory</h2>
 
       {/* Global Search Filter Input */}
-      <div className="flex justify-between mb-4">
-        <div className="w-full flex items-center gap-1">
-          <SearchInput
-            value={globalFilter ?? ""}
-            onChange={(value) => setGlobalFilter(String(value))}
-            className="p-2 bg-transparent outline-none border-b-2 w-1/5 focus:w-1/3 duration-300 border-indigo-500"
-            placeholder="Search all columns..."
-          />
-        </div>
+      <div className="inventory-controls">
+        {/* <div className="w-full flex items-center gap-1"> */}
+        <SearchInput
+          value={globalFilter ?? ""}
+          onChange={(value) => setGlobalFilter(String(value))}
+          placeholder="Search all columns..."
+        />
+        {/* </div> */}
 
         {/* Clear Filters Button */}
         <button
@@ -183,20 +210,20 @@ function InventoriesComponent() {
 
         <button
           onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded"
+          // className="px-4 py-2 bg-indigo-600 text-white rounded"
         >
           Add New Item
         </button>
       </div>
 
       {/* Table Container */}
-      <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4">
-        <table className="min-w-full border-collapse">
-          <thead className="bg-indigo-600">
+      <div className="inventory-table-container">
+        <table className="inventory-table">
+          <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="capitalize px-3.5 py-2">
+                  <th key={header.id}>
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
@@ -206,7 +233,7 @@ function InventoriesComponent() {
                       <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="p-1 border border-gray-300 rounded text-sm bg-white"
+                        className="category-filter"
                       >
                         <option value="">All</option>
                         {uniqueCategories.map((cat) => (
@@ -222,7 +249,7 @@ function InventoriesComponent() {
                       <select
                         value={supplierFilter}
                         onChange={(e) => setSupplierFilter(e.target.value)}
-                        className="p-1 border border-gray-300 rounded text-sm bg-white"
+                        className="supplier-filter"
                       >
                         <option value="">All</option>
                         {uniqueSuppliers.map((sup) => (
@@ -241,27 +268,32 @@ function InventoriesComponent() {
           <tbody>
             {filteredData.length > 0 ? (
               filteredData.map((newItem) => (
-                <tr key={newItem.id} className="border-b">
+                <tr key={newItem.id}>
                   {table
                     .getRowModel()
                     .rows.find((row) => row.original.id === newItem.id)
                     ?.getVisibleCells()
                     .map((cell) => (
-                      <td key={cell.id} className="p-3">
+                      <td key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
                         )}
                       </td>
                     ))}
+                  <td>
+                    <button
+                      onClick={() => handleDelete(newItem.id)}
+                      className="delete-btn"
+                    >
+                      🗑️
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="p-4 text-center text-red-500 font-semibold"
-                >
+                <td colSpan={columns.length} className="no-results">
                   Oops! No item matching your search was found.
                 </td>
               </tr>
@@ -270,7 +302,12 @@ function InventoriesComponent() {
         </table>
       </div>
 
-      {showForm && <ItemForm onClose={() => setShowForm(false)} onItemAdded={handleItemAdded} />}
+      {showForm && (
+        <ItemForm
+          onClose={() => setShowForm(false)}
+          onItemAdded={handleItemAdded}
+        />
+      )}
 
       <Outlet />
     </div>

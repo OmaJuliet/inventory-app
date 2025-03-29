@@ -1,19 +1,19 @@
 import { useForm } from "@tanstack/react-form";
-import z from "zod";
-import { Inventory } from "../routes/inventories";
-import { useState } from "react";
+import * as React from "react";
+import "../styles/inventory.css";
 
+function FieldInfo({ field }) {
+  return (
+    <>
+      {field.state.meta.isTouched && field.state.meta.errors.length ? (
+        <em>{field.state.meta.errors.join(", ")}</em>
+      ) : null}
+      {field.state.meta.isValidating ? "Validating..." : null}
+    </>
+  );
+}
 
-export default function ItemForm({
-  onClose,
-  onItemAdded,
-}: {
-  onClose: () => void;
-  onItemAdded: (newItem: Inventory) => void;
-}) {
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
+export default function ItemForm({ onClose, onItemAdded }) {
   const form = useForm({
     defaultValues: {
       productID: 1,
@@ -22,364 +22,225 @@ export default function ItemForm({
       price: 1,
       category: "",
       supplier: "",
-      productImage: "",
+      productImage: null as File | null, // Added image field
     },
     onSubmit: async ({ value }) => {
       try {
-        const response = await fetch("http://localhost:1337/api/inventories", {
+        // Step 1: Create the inventory entry
+        const { productImage, ...formData } = value; // Exclude image from first request
+        const payload = { data: formData };
+
+        const entryResponse = await fetch("http://localhost:1337/api/inventories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: value }),
+          body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error("Failed to add item");
-        console.log(FormData)
+        if (!entryResponse.ok) throw new Error("Failed to create entry");
 
-        const newItem = await response.json();
-        // onItemAdded(newItem.data);
-        onItemAdded(newItem.data.attributes || newItem.data);
+        const entryData = await entryResponse.json();
+        console.log("Entry created:", entryData);
+        const documentId = entryData.data.documentId;
 
-        alert("Item added successfully!");
+        // Step 2: Upload the image
+        const formDataImage = new FormData();
+        if (productImage) {
+          formDataImage.append("files", productImage); // Append selected file
+        }
+
+        const imageResponse = await fetch("http://localhost:1337/api/upload", {
+          method: "POST",
+          body: formDataImage,
+        });
+
+        if (!imageResponse.ok) throw new Error("Failed to upload image");
+
+        const uploadedImage = await imageResponse.json();
+        console.log("Image uploaded:", uploadedImage);
+        const imageId = uploadedImage[0].id;
+
+        // Step 3: Perform PUT request to update entry with image ID
+        const updatePayload = {
+          data: { productImage: imageId },
+        };
+
+        const updateResponse = await fetch(`http://localhost:1337/api/inventories/${documentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatePayload),
+        });
+
+        if (!updateResponse.ok) throw new Error("Failed to update entry with image");
+        console.log("Entry updated with image", updateResponse);
+
+        onItemAdded(entryData.data.attributes || entryData.data);
+        alert("Item added successfully with image!");
+        window.location.reload(); // Reload page to show new item
       } catch (error) {
-        console.error(error);
+        console.error("Error during item creation:", error);
         alert("Error adding item.");
       }
-    },
-    validators: {
-      onChange: z.object({
-        productID: z.number().int().min(1, "Must include product id"),
-        productName: z.string().min(3, "Product name is required"),
-        quantity: z.number().int().min(1, "Must input quantity"),
-        price: z.number().int().min(1, "Must input unit price"),
-        category: z.string().min(5, "Category is required"),
-        supplier: z.string().min(3, "Supplier is required"),
-        productImage: z.string().url(),
-      }),
     },
   });
 
   return (
-    <div>
+    <div className="item-form-container">
+      <h2 className="item-form-header">Add New Inventory Item</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           form.handleSubmit();
         }}
       >
-        {/* Input Fields */}
+        {/* Product ID */}
         <form.Field
           name="productID"
+          validators={{
+            onChange: ({ value }) =>
+              !value || value <= 0 ? "Product ID must be greater than 0" : undefined,
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="productID">Product ID</label>
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Product ID</label>
               <input
-                name="productID"
+                id={field.name}
                 type="number"
                 value={field.state.value}
-                onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(Number(e.target.value))}
               />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
+        {/* Product Name */}
         <form.Field
           name="productName"
+          validators={{
+            onChange: ({ value }) =>
+              !value ? "Product name is required" : value.length < 3 ? "Must be at least 3 characters" : undefined,
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="productName">Product Name</label>
-              <input
-                name="productName"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Product Name</label>
+              <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
+        {/* Quantity */}
         <form.Field
           name="quantity"
+          validators={{
+            onChange: ({ value }) => (value <= 0 ? "Quantity must be at least 1" : undefined),
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="quantity">Quantity</label>
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Quantity</label>
               <input
-                name="quantity"
+                id={field.name}
                 type="number"
                 value={field.state.value}
-                onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(Number(e.target.value))}
               />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
+        {/* Price */}
         <form.Field
           name="price"
+          validators={{
+            onChange: ({ value }) => (value <= 0 ? "Price must be greater than 0" : undefined),
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="price">Price</label>
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Price</label>
               <input
-                name="price"
+                id={field.name}
                 type="number"
                 value={field.state.value}
-                onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(Number(e.target.value))}
               />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
+        {/* Category */}
         <form.Field
           name="category"
+          validators={{
+            onChange: ({ value }) => (!value ? "Category is required" : undefined),
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="category">Category</label>
-              <input
-                name="category"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Category</label>
+              <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
+        {/* Supplier */}
         <form.Field
           name="supplier"
+          validators={{
+            onChange: ({ value }) => (!value ? "Supplier is required" : undefined),
+          }}
           children={(field) => (
-            <div>
-              <label htmlFor="supplier">Supplier</label>
-              <input
-                name="supplier"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Supplier</label>
+              <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
+              <FieldInfo field={field} />
             </div>
           )}
         />
 
-        {/* <form.Field
+        {/* Image Upload */}
+        <form.Field
           name="productImage"
+          validators={{
+            onChange: ({ value }) => (!value ? "Image is required" : undefined),
+          }}
           children={(field) => (
-            <div>
-              <label>Product Image</label>
+            <div className="item-form-field">
+              <label htmlFor={field.name}>Product Image</label>
               <input
+                id={field.name}
                 type="file"
                 accept="image/*"
-                name="productImage"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  field.handleChange(() => file);
+                }}
               />
-              {field.state.meta.errors.map((error) => (
-                <p key={error as string}>{error}</p>
-              ))}
+              <FieldInfo field={field} />
             </div>
           )}
-        /> */}
+        />
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-500 text-white rounded"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-indigo-600 text-white rounded"
-        >
-          Submit
-        </button>
+        {/* Buttons */}
+        <form.Subscribe
+          selector={(state) => [state.canSubmit, state.isSubmitting]}
+          children={([canSubmit, isSubmitting]) => (
+            <div className="item-form-field">
+              <button type="submit" className="item-form-submit-button" disabled={!canSubmit}>
+                {isSubmitting ? "..." : "Submit"}
+              </button>
+              <button type="reset" className="item-form-reset-button" onClick={() => form.reset()}>
+                Reset
+              </button>
+              <button type="button" className="item-form-cancel-button" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          )}
+        />
       </form>
     </div>
   );
 }
-
-
-
-
-
-
-// import { useForm } from "@tanstack/react-form";
-// import { useState } from "react";
-// import { z } from "zod";
-
-// const schema = z.object({
-//   productName: z.string().min(3, "Product name is required"),
-//   productID: z.number().int().min(1, "Must input product ID"),
-//   quantity: z.number().int().min(1, "Must input quantity"),
-//   price: z.number().int().min(1, "Must input unit price"),
-//   category: z.string().min(3, "Category is required"),
-//   supplier: z.string().min(3, "Supplier is required"),
-// });
-
-// export default function ItemForm({ onClose, onItemAdded }) {
-//   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-//   const form = useForm({
-//     defaultValues: {
-//       productName: "",
-//       productID: 1,
-//       quantity: 1,
-//       price: 1,
-//       category: "",
-//       supplier: "",
-//     },
-//   });
-
-//   const handleSubmit = async (event: React.FormEvent) => {
-//     event.preventDefault();
-
-//     // Validate form data
-//     const result = schema.safeParse(form.values);
-//     if (!result.success) {
-//       alert("Please correct the validation errors before submitting.");
-//       return;
-//     }
-
-//     try {
-//       const formData = new FormData();
-
-//       formData.append("data", JSON.stringify(result.data)); // Using validated data
-
-//       if (selectedFile) {
-//         formData.append("files.productImage", selectedFile);
-//       }
-
-//       const response = await fetch("http://localhost:1337/api/inventories", {
-//         method: "POST",
-//         headers: {
-//           Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
-//         },
-//         body: formData,
-//       });
-
-//       if (!response.ok) throw new Error("Failed to add item");
-
-//       const newItem = await response.json();
-//       onItemAdded(newItem.data);
-//       alert("Item added successfully!");
-//       onClose();
-//     } catch (error) {
-//       console.error("Upload Error:", error);
-//       alert("Error adding item.");
-//     }
-//   };
-
-//   return (
-//     <form onSubmit={handleSubmit}>
-//       <form.Field
-//         name="productName"
-//         validation={schema.shape.productName}
-//         children={(field) => (
-//           <div>
-//             <label>Product Name</label>
-//             <input {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       <form.Field
-//         name="productID"
-//         validation={schema.shape.productID}
-//         children={(field) => (
-//           <div>
-//             <label>Product ID</label>
-//             <input type="number" {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       <form.Field
-//         name="quantity"
-//         validation={schema.shape.quantity}
-//         children={(field) => (
-//           <div>
-//             <label>Quantity</label>
-//             <input type="number" {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       <form.Field
-//         name="price"
-//         validation={schema.shape.price}
-//         children={(field) => (
-//           <div>
-//             <label>Price</label>
-//             <input type="number" {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       <form.Field
-//         name="category"
-//         validation={schema.shape.category}
-//         children={(field) => (
-//           <div>
-//             <label>Category</label>
-//             <input {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       <form.Field
-//         name="supplier"
-//         validation={schema.shape.supplier}
-//         children={(field) => (
-//           <div>
-//             <label>Supplier</label>
-//             <input {...field.props} />
-//             {field.state.meta.errors.length > 0 && (
-//               <p style={{ color: "red" }}>{field.state.meta.errors[0]}</p>
-//             )}
-//           </div>
-//         )}
-//       />
-
-//       {/* File Upload Input */}
-//       <div>
-//         <label>Product Image</label>
-//         <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-//       </div>
-
-//       <button type="submit">Submit</button>
-//     </form>
-//   );
-// }

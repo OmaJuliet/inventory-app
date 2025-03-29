@@ -88,3 +88,21 @@
   .cta-button:hover {
     background-color: #333;
   }
+
+  .navigation-container {
+    padding: 0.5rem;
+    display: flex;
+    gap: 1rem;
+    font-size: 1.125rem;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .navigation-link {
+    text-decoration: none;
+  }
+  
+  .navigation-link-active {
+    font-weight: bold;
+  }
+  

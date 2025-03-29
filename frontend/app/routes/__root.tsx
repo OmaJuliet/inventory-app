@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import "../styles/home.css";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -41,11 +42,11 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div className="navigation-container">
           <Link
             to="/"
             activeProps={{
-              className: "font-bold",
+              className: "navigation-link navigation-link-active",
             }}
             activeOptions={{ exact: true }}
           >
@@ -54,7 +55,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           <Link
             to="/inventories"
             activeProps={{
-              className: "font-bold",
+              className: "navigation-link navigation-link-active",
             }}
           >
             Inventories

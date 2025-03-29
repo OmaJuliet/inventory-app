@@ -1,18 +1,12 @@
 // import "./home.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import "../styles/home.css";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
-// function Home() {
-//   return (
-//     <div className="p-2">
-//       <h3>Welcome! Manage your inventory efficiently</h3>
-//     </div>
-//   )
-// }
 
 function Home() {
   return (
