@@ -164,6 +164,7 @@ function InventoriesComponent() {
         setInventoryList((prev) => prev.filter((item) => item.documentId !== documentId));
         alert("Item deleted successfully!");
         console.log("Item deleted successfully!");
+        window.location.reload();
       } else {
         throw new Error("Failed to delete item");
       }

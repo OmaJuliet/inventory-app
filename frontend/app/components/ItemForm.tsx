@@ -1,6 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import * as React from "react";
-import "../styles/inventory.css";
+import "../styles/form.css";
 
 function FieldInfo({ field }) {
   return (
@@ -84,8 +84,8 @@ export default function ItemForm({ onClose, onItemAdded }) {
   });
 
   return (
-    <div className="item-form-container">
-      <h2 className="item-form-header">Add New Inventory Item</h2>
+    <div className="form-container">
+      <h2 className="form-header">Add New Inventory Item</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -101,7 +101,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
               !value || value <= 0 ? "Product ID must be greater than 0" : undefined,
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Product ID</label>
               <input
                 id={field.name}
@@ -122,7 +122,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
               !value ? "Product name is required" : value.length < 3 ? "Must be at least 3 characters" : undefined,
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Product Name</label>
               <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
               <FieldInfo field={field} />
@@ -137,7 +137,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
             onChange: ({ value }) => (value <= 0 ? "Quantity must be at least 1" : undefined),
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Quantity</label>
               <input
                 id={field.name}
@@ -157,7 +157,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
             onChange: ({ value }) => (value <= 0 ? "Price must be greater than 0" : undefined),
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Price</label>
               <input
                 id={field.name}
@@ -177,7 +177,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
             onChange: ({ value }) => (!value ? "Category is required" : undefined),
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Category</label>
               <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
               <FieldInfo field={field} />
@@ -192,7 +192,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
             onChange: ({ value }) => (!value ? "Supplier is required" : undefined),
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Supplier</label>
               <input id={field.name} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
               <FieldInfo field={field} />
@@ -207,7 +207,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
             onChange: ({ value }) => (!value ? "Image is required" : undefined),
           }}
           children={(field) => (
-            <div className="item-form-field">
+            <div className="form-input">
               <label htmlFor={field.name}>Product Image</label>
               <input
                 id={field.name}
@@ -227,7 +227,7 @@ export default function ItemForm({ onClose, onItemAdded }) {
         <form.Subscribe
           selector={(state) => [state.canSubmit, state.isSubmitting]}
           children={([canSubmit, isSubmitting]) => (
-            <div className="item-form-field">
+            <div className="submit-btn">
               <button type="submit" className="item-form-submit-button" disabled={!canSubmit}>
                 {isSubmitting ? "..." : "Submit"}
               </button>
