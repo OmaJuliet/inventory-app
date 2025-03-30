@@ -22,6 +22,7 @@ export const Route = createFileRoute("/inventories")({
 export type Inventory = {
   id: number;
   productID: string;
+  documentId?: string;
   productName: string;
   quantity: number;
   price: number;
@@ -103,19 +104,6 @@ function InventoriesComponent() {
         />
       ),
     },
-    // delete functionality
-    // {
-    //   id: "delete",
-    //   header: "Delete",
-    //   cell: ({ row }) => (
-    //     <button
-    //       className="delete-btn"
-    //       onClick={() => handleDelete(row.original.id)}
-    //     >
-    //       🗑️
-    //     </button>
-    //   ),
-    // },
   ];
 
   // Update the component to use inventoryList instead of inventories after adding inventory
@@ -173,8 +161,9 @@ function InventoriesComponent() {
       });
 
       if (response.ok) {
-        setInventoryList((prev) => prev.filter((item) => item.id !== id));
+        setInventoryList((prev) => prev.filter((item) => item.documentId !== documentId));
         alert("Item deleted successfully!");
+        console.log("Item deleted successfully!");
       } else {
         throw new Error("Failed to delete item");
       }
@@ -283,7 +272,7 @@ function InventoriesComponent() {
                     ))}
                   <td>
                     <button
-                      onClick={() => handleDelete(newItem.id)}
+                      onClick={() => handleDelete(newItem?.documentId)}
                       className="delete-btn"
                     >
                       🗑️
